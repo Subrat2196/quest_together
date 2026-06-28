@@ -127,27 +127,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [activePlayerId, setActivePlayerId] = useState<PlayerId>('player1');
   const [lastCompletionResult, setLastCompletionResult] = useState<QuestCompletionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Initial data load
   useEffect(() => {
     async function load() {
       try {
-        const [pRes, qRes, rRes, rdRes, aRes, paRes] = await Promise.all([
-          supabase.from('players').select('*'),
-          supabase.from('quests').select('*').order('created_at', { ascending: false }),
-          supabase.from('rewards').select('*').order('coin_cost'),
-          supabase.from('redemptions').select('*'),
-          supabase.from('achievements').select('*'),
-          supabase.from('player_achievements').select('*'),
-        ]);
-        if (pRes.data) setPlayers(pRes.data.map(rowToPlayer));
+        const pRes = await supabase.from('players').select('*');
+        if (pRes.error) throw new Error(`players: ${pRes.error.message}`);
+        setPlayers(pRes.data.map(rowToPlayer));
+
+        const qRes = await supabase.from('quests').select('*').order('created_at', { ascending: false });
         if (qRes.data) setQuests(qRes.data.map(rowToQuest));
+
+        const rRes = await supabase.from('rewards').select('*').order('coin_cost');
         if (rRes.data) setRewards(rRes.data.map(rowToReward));
+
+        const rdRes = await supabase.from('redemptions').select('*');
         if (rdRes.data) setRedemptions(rdRes.data.map(rowToRedemption));
+
+        const aRes = await supabase.from('achievements').select('*');
         if (aRes.data) setAchievements(aRes.data.map(rowToAchievement));
+
+        const paRes = await supabase.from('player_achievements').select('*');
         if (paRes.data) setPlayerAchievements(paRes.data.map(rowToPlayerAchievement));
       } catch (err) {
         console.error('Failed to load game data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to connect to database');
       } finally {
         setLoading(false);
       }
@@ -373,12 +379,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     calcProgress(playerId, achievement, players, quests),
   [players, quests]);
 
-  if (loading || players.length === 0) {
+  if (loading) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-bg-base">
         <div className="text-center">
           <div className="text-4xl mb-3 animate-float">🔥</div>
           <div className="text-sm text-text-muted">Loading Quest Together...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || players.length === 0) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-bg-base px-6">
+        <div className="text-center max-w-sm">
+          <div className="text-4xl mb-3">⚠️</div>
+          <div className="text-sm text-fire font-medium mb-2">Connection Error</div>
+          <div className="text-xs text-text-muted mb-4">{error || 'No players found. Check Supabase tables.'}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-primary text-white rounded-xl text-sm font-medium"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
