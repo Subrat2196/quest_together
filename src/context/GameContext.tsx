@@ -131,21 +131,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Initial data load
   useEffect(() => {
     async function load() {
-      const [pRes, qRes, rRes, rdRes, aRes, paRes] = await Promise.all([
-        supabase.from('players').select('*'),
-        supabase.from('quests').select('*').order('created_at', { ascending: false }),
-        supabase.from('rewards').select('*').order('coin_cost'),
-        supabase.from('redemptions').select('*').order('redeemed_at', { ascending: false }),
-        supabase.from('achievements').select('*'),
-        supabase.from('player_achievements').select('*'),
-      ]);
-      if (pRes.data) setPlayers(pRes.data.map(rowToPlayer));
-      if (qRes.data) setQuests(qRes.data.map(rowToQuest));
-      if (rRes.data) setRewards(rRes.data.map(rowToReward));
-      if (rdRes.data) setRedemptions(rdRes.data.map(rowToRedemption));
-      if (aRes.data) setAchievements(aRes.data.map(rowToAchievement));
-      if (paRes.data) setPlayerAchievements(paRes.data.map(rowToPlayerAchievement));
-      setLoading(false);
+      try {
+        const [pRes, qRes, rRes, rdRes, aRes, paRes] = await Promise.all([
+          supabase.from('players').select('*'),
+          supabase.from('quests').select('*').order('created_at', { ascending: false }),
+          supabase.from('rewards').select('*').order('coin_cost'),
+          supabase.from('redemptions').select('*'),
+          supabase.from('achievements').select('*'),
+          supabase.from('player_achievements').select('*'),
+        ]);
+        if (pRes.data) setPlayers(pRes.data.map(rowToPlayer));
+        if (qRes.data) setQuests(qRes.data.map(rowToQuest));
+        if (rRes.data) setRewards(rRes.data.map(rowToReward));
+        if (rdRes.data) setRedemptions(rdRes.data.map(rowToRedemption));
+        if (aRes.data) setAchievements(aRes.data.map(rowToAchievement));
+        if (paRes.data) setPlayerAchievements(paRes.data.map(rowToPlayerAchievement));
+      } catch (err) {
+        console.error('Failed to load game data:', err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
